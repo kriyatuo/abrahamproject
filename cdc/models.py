@@ -53,9 +53,10 @@ class Personne(models.Model):
         verbose_name='la personne qui récupère les médicaments'
     )
     code = models.CharField(verbose_name='code personne', max_length=25)
-    nom = models.CharField(verbose_name='nom de la personne', max_length=40)
+    nom = models.CharField(
+        verbose_name='nom de la personne', max_length=40, blank=True)
     prenom = models.CharField(
-        verbose_name='prenom de la personne', max_length=50)
+        verbose_name='prenom de la personne', max_length=50, blank=True)
 
     def __str__(self):
         return '{} - {} {}'.format(self.type_personne, self.nom, self.prenom)
@@ -65,70 +66,67 @@ class Personne(models.Model):
         verbose_name_plural = 'Personnes'
 
 
-class Medicament(models.Model):
-    nom_medicament = models.CharField(
-        verbose_name='nom du Médicament', max_length=30, blank=True)
+class Produit(models.Model):
+    nom_produit = models.CharField(
+        verbose_name='nom du Produit', max_length=30, blank=True)
     alerte = models.IntegerField(
-        verbose_name='seuil à ne pas franchir', max_length=70, blank=True)
+        verbose_name='seuil à ne pas franchir', blank=True)
 
     @property
     def quantite_disponible(self):
-        #        a = Batch.objects.filter(medicament=self).annotate(
-        #            qte_batch=Sum('quantite_batch')).values('qte_batch')
-        #        b = Recuperation.objects.filter(medicament=self).annotate(
-        #            qte_recup=Sum('quantite')).values('qte_recup')
-        #        return a - b
-        return self.batch.all().aggregate(qte=Sum('quantite_batch'))['qte'] - self.recuperations.all().aggregate(qte=Sum('quantite'))['qte']
-
+        return self.lot.all().aggregate(qte=Sum('quantite_batch'))['qte'] - self.dispensation.all().aggregate(qte=Sum('quantite'))['qte']
+    """
     @property
     def signale(self):
         while self.alerte > self.quantite_disponible:
             print("attention stock ")
+    """
 
     def __str__(self):
-        return '{} : {}'.format(self.nom_medicament , self.quantite_disponible)
+        return '{} : {}'.format(self.nom_produit, self.quantite_disponible)
 
     class Meta:
-        verbose_name = 'Médicament'
-        verbose_name_plural = 'Médicaments'
+        verbose_name = 'Produit'
+        verbose_name_plural = 'Produits'
 
 
-class Recuperation(models.Model):
+class Dispensation(models.Model):
     personne = models.ForeignKey(
         'Personne',
-        on_delete=models.CASCADE, related_name="recuperations"
+        on_delete=models.CASCADE, related_name="dispensation"
     )
-    medicament = models.ForeignKey(
-        'Medicament',
-        on_delete=models.CASCADE, related_name="recuperations"
+    produit = models.ForeignKey(
+        'Produit',
+        on_delete=models.CASCADE, related_name="dispensation"
     )
     date = models.DateField()
     quantite = models.IntegerField(
-        verbose_name='Quantité recuperée', max_length=10)
+        verbose_name='Quantité recuperée')
 
     def __str__(self):
-        return '{} ({} x {}) {}'.format(self.personne, self.quantite, self.medicament, self.date)
+        return '{} ({} x {}) {}'.format(self.personne, self.quantite, self.produit, self.date)
 
     class Meta:
-        verbose_name = 'Recuperation'
-        verbose_name_plural = 'Recuperations'
+        verbose_name = 'Dispensation'
+        verbose_name_plural = 'Dispensations'
 
 
-class Batch(models.Model):
+class Lot(models.Model):
     Livraison = models.ForeignKey(
         'Livraison',
-        on_delete=models.CASCADE, related_name="batch",
+        on_delete=models.CASCADE, related_name="lot",
     )
-    medicament = models.ForeignKey(
-        'Medicament',
-        on_delete=models.CASCADE, related_name="batch",
+    produit = models.ForeignKey(
+        'Produit',
+        on_delete=models.CASCADE, related_name="lot",
     )
-    bacth_id = models.CharField(max_length=25, blank=True)
-    quantite_batch = models.IntegerField(max_length=10)
+    numero_lot = models.CharField(
+        verbose_name='numero de lot', max_length=25, blank=True)
+    quantite_lot = models.IntegerField(verbose_name='quantite du lot')
 
     def __str__(self):
-        return '{}, {}'.format(self.bacth_id, self.medicament)
+        return '{}, {}, {}'.format(self.numero_lot, self.produit, self.quantite_lot)
 
     class Meta:
-        verbose_name = 'Batch'
-        verbose_name_plural = 'Batch'
+        verbose_name = 'Lot'
+        verbose_name_plural = 'Lots'
