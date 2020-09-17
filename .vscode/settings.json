@@ -1,3 +1,4 @@
 {
-    "python.pythonPath": "C:\\Users\\Toure Kriya\\.virtualenvs\\projet_pharmacie-IOicgbQf\\Scripts\\python.exe"
+    "python.pythonPath": "C:\\Users\\Toure Kriya\\.virtualenvs\\projet_pharmacie-IOicgbQf\\Scripts\\python.exe",
+    "git.ignoreLimitWarning": true
 }

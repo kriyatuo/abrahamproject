@@ -1,6 +1,18 @@
 from django.db import models
 from django.db.models import Sum
 
+# -------------------------------------------------------------------------------------------------------------------
+# Create your models here.
+
+
+class MonitoredTimeModel(models.Model):
+    creation_time = models.DateTimeField(auto_now_add=True)
+    update_time = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+# ------------------------------------------------------------------------------------------------------------------
+
 
 class Fournisseur(models.Model):
     code = models.CharField(
@@ -46,17 +58,21 @@ class Livraison(models.Model):
         verbose_name_plural = 'Livraisons'
 
 
-class Personne(models.Model):
+class Personne(MonitoredTimeModel):
     type_personne = models.ForeignKey(
         'Type_personne',
         on_delete=models.CASCADE, related_name="personnes",
         verbose_name='la personne qui récupère les médicaments'
     )
     code = models.CharField(verbose_name='code personne', max_length=25)
-    nom = models.CharField(
+    nom = models.TextField(
         verbose_name='nom de la personne', max_length=40, blank=True)
-    prenom = models.CharField(
+    prenom = models.TextField(
         verbose_name='prenom de la personne', max_length=50, blank=True)
+
+    @property
+    def derniere_visite(self):
+        return self.dispensation.latest('creation_time')
 
     def __str__(self):
         return '{} - {} {}'.format(self.type_personne, self.nom, self.prenom)
@@ -67,20 +83,22 @@ class Personne(models.Model):
 
 
 class Produit(models.Model):
-    nom_produit = models.CharField(
-        verbose_name='nom du Produit', max_length=30, blank=True)
+    designation_produit = models.CharField(
+        verbose_name='Designation du Produit', max_length=30, blank=True)
+    unite = models.CharField(
+        verbose_name='unité du Produit', max_length=30, blank=True)
     alerte = models.IntegerField(
         verbose_name='seuil à ne pas franchir', blank=True)
 
     @property
     def quantite_disponible(self):
-        return self.lot.all().aggregate(qte=Sum('quantite_batch'))['qte'] - self.dispensation.all().aggregate(qte=Sum('quantite'))['qte']
-    """
+        return self.lot.all().aggregate(qte=Sum('quantite_lot'))['qte'] - self.dispensation.all().aggregate(qte=Sum('quantite'))['qte']
+
     @property
-    def signale(self):
-        while self.alerte > self.quantite_disponible:
-            print("attention stock ")
-    """
+    def alerte(self):
+        if self.quantite_disponible <= 500:
+            def send(self, messages):
+                " STOCK inférieur à 500. Bientôt en manque "
 
     def __str__(self):
         return '{} : {}'.format(self.nom_produit, self.quantite_disponible)
@@ -99,9 +117,12 @@ class Dispensation(models.Model):
         'Produit',
         on_delete=models.CASCADE, related_name="dispensation"
     )
-    date = models.DateField()
+    date = models.DateField(verbose_name="date de dispensation", )
     quantite = models.IntegerField(
         verbose_name='Quantité recuperée')
+    next_rdv = models.DateField(verbose_name="date de prochain de rdv", )
+    qte_next_rdv = models.IntegerField(
+        verbose_name='Quantité à recuperer au prochain rdv')
 
     def __str__(self):
         return '{} ({} x {}) {}'.format(self.personne, self.quantite, self.produit, self.date)
@@ -122,7 +143,9 @@ class Lot(models.Model):
     )
     numero_lot = models.CharField(
         verbose_name='numero de lot', max_length=25, blank=True)
+    unite = models.CharField(verbose_name="l'unité du lot", max_length=50)
     quantite_lot = models.IntegerField(verbose_name='quantite du lot')
+    date_de_peremption = models.DateField()
 
     def __str__(self):
         return '{}, {}, {}'.format(self.numero_lot, self.produit, self.quantite_lot)
